@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Bishopsgrotto · Little Ones</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Nunito:wght@400;700;800&family=Playfair+Display:ital,wght@0,700;1,400&display=swap');
+
+  :root {
+    --bg: #0f0c1a;
+    --card: rgba(255,255,255,0.05);
+    --border: rgba(255,255,255,0.1);
+    --gold: #f4a261;
+    --soft: #c8b8f0;
+    --text: rgba(255,255,255,0.88);
+    --muted: rgba(255,255,255,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Blobs */
+  .blob {
+    position: fixed; border-radius: 50%; pointer-events: none; z-index: 0;
+    filter: blur(80px); opacity: 0.25;
+  }
+  .blob-1 { width: 500px; height: 500px; background: #6a0dad; top: -150px; left: -150px; }
+  .blob-2 { width: 400px; height: 400px; background: #f4a261; bottom: -100px; right: -100px; }
+
+  .wrap { position: relative; z-index: 1; max-width: 600px; margin: 0 auto; padding: 36px 20px 60px; }
+
+  /* Header */
+  .header { text-align: center; margin-bottom: 40px; }
+  .brand { font-size: 10px; letter-spacing: 5px; color: var(--gold); text-transform: uppercase; margin-bottom: 10px; }
+  .title { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 600; font-style: italic; line-height: 1.2; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: var(--muted); }
+
+  /* Steps */
+  .steps { display: flex; justify-content: center; gap: 6px; margin-bottom: 36px; }
+  .step-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
+  .step-dot.active { background: var(--gold); transform: scale(1.3); }
+  .step-dot.done { background: var(--soft); }
+
+  /* Section */
+  .section { margin-bottom: 28px; }
+  .section-label { font-size: 10px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; margin-bottom: 14px; }
+
+  /* Style cards */
+  .style-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .style-card {
+    border: 2px solid var(--border); border-radius: 16px; padding: 16px 10px;
+    cursor: pointer; text-align: center; transition: all 0.25s; background: var(--card);
+  }
+  .style-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .style-card.selected { border-color: var(--gold); background: rgba(244,162,97,0.1); box-shadow: 0 0 20px rgba(244,162,97,0.2); }
+  .style-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .style-card .name { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .style-card .desc { font-size: 10px; color: var(--muted); line-height: 1.4; }
+
+  /* Product toggle */
+  .product-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .product-btn {
+    padding: 14px 8px; border-radius: 14px; border: 2px solid var(--border);
+    background: var(--card); cursor: pointer; text-align: center;
+    color: var(--text); font-family: 'Nunito', sans-serif; transition: all 0.25s;
+  }
+  .product-btn:hover { border-color: var(--soft); }
+  .product-btn.selected { border-color: var(--gold); background: rgba(244,162,97,0.1); }
+  .product-btn .p-icon { font-size: 22px; display: block; margin-bottom: 6px; }
+  .product-btn .p-name { font-size: 11px; font-weight: 800; }
+
+  /* Form */
+  .form-grid { display: grid; gap: 14px; }
+  .field label { display: block; font-size: 10px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; margin-bottom: 6px; }
+  .field input, .field textarea, .field select {
+    width: 100%; padding: 12px 16px; background: rgba(255,255,255,0.07);
+    border: 1.5px solid var(--border); border-radius: 12px; color: white;
+    font-family: 'Nunito', sans-serif; font-size: 14px; outline: none;
+    transition: border-color 0.2s; resize: none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); }
+  .field select option { background: #1a1030; color: white; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Gender toggle */
+  .gender-row { display: flex; gap: 10px; }
+  .gender-btn {
+    flex: 1; padding: 10px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--muted); cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-size: 13px; transition: all 0.2s;
+  }
+  .gender-btn.selected { border-color: var(--gold); background: rgba(244,162,97,0.1); color: var(--gold); }
+
+  /* Dedication */
+  .dedication-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 10px; }
+  .toggle-pill {
+    width: 44px; height: 24px; border-radius: 12px; background: var(--border);
+    position: relative; transition: background 0.3s; flex-shrink: 0;
+  }
+  .toggle-pill.on { background: var(--gold); }
+  .toggle-pill::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%; background: white;
+    transition: transform 0.3s;
+  }
+  .toggle-pill.on::after { transform: translateX(20px); }
+  .toggle-label { font-size: 13px; color: var(--muted); }
+
+  /* Buttons */
+  .btn-primary {
+    width: 100%; padding: 16px; background: var(--gold); border: none;
+    border-radius: 14px; color: #0f0c1a; font-family: 'Nunito', sans-serif;
+    font-size: 16px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 8px 30px rgba(244,162,97,0.35); transition: all 0.2s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(244,162,97,0.5); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-secondary {
+    width: 100%; padding: 13px; background: transparent;
+    border: 1.5px solid var(--border); border-radius: 14px; color: var(--muted);
+    font-family: 'Nunito', sans-serif; font-size: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--soft); color: var(--soft); }
+
+  /* Loading */
+  #loading-screen { display: none; text-align: center; padding: 60px 20px; }
+  .spinner { font-size: 52px; display: inline-block; animation: spin 1.8s linear infinite; margin-bottom: 20px; }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .loading-name { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-style: italic; margin-bottom: 8px; }
+  .loading-sub { font-size: 13px; color: var(--muted); }
+
+  /* Result */
+  #result-screen { display: none; }
+  .result-header { text-align: center; margin-bottom: 28px; }
+  .result-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-style: italic; margin-bottom: 6px; }
+  .result-meta { font-size: 12px; color: var(--muted); }
+
+  .pages-nav { display: flex; justify-content: center; gap: 8px; margin: 20px 0; flex-wrap: wrap; }
+  .page-dot {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--border);
+    cursor: pointer; transition: all 0.3s; border: none;
+  }
+  .page-dot.active { background: var(--gold); transform: scale(1.4); }
+
+  .page-card {
+    border: 1.5px solid rgba(244,162,97,0.2); border-radius: 22px;
+    padding: 30px 26px; margin-bottom: 20px; background: var(--card);
+    min-height: 180px;
+  }
+  .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .page-emoji { font-size: 30px; }
+  .page-label { font-size: 10px; letter-spacing: 2px; color: var(--gold); text-transform: uppercase; }
+  .page-prayer-title { font-size: 13px; color: var(--muted); font-style: italic; }
+  .page-body { font-family: 'Cormorant Garamond', serif; font-size: 17px; line-height: 1.85; font-style: italic; }
+
+  .nav-row { display: flex; gap: 10px; margin-bottom: 20px; }
+  .nav-btn {
+    flex: 1; padding: 12px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: transparent; color: var(--text); font-family: 'Nunito', sans-serif;
+    font-size: 14px; cursor: pointer; transition: all 0.2s;
+  }
+  .nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+  .nav-btn.next { background: var(--gold); color: #0f0c1a; font-weight: 800; border-color: var(--gold); }
+  .nav-btn.next:disabled { background: transparent; color: var(--muted); }
+
+  .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .btn-download {
+    padding: 14px; background: var(--gold); border: none; border-radius: 12px;
+    color: #0f0c1a; font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+    cursor: pointer; transition: all 0.2s; box-shadow: 0 6px 20px rgba(244,162,97,0.3);
+  }
+  .btn-download:hover { transform: translateY(-1px); }
+  .btn-new {
+    padding: 14px; background: transparent; border: 1.5px solid var(--gold);
+    border-radius: 12px; color: var(--gold); font-family: 'Nunito', sans-serif;
+    font-size: 14px; cursor: pointer; transition: all 0.2s;
+  }
+
+  .error-msg { color: #ff7b7b; font-size: 13px; margin-bottom: 14px; padding: 10px 14px; background: rgba(255,100,100,0.08); border-radius: 10px; display: none; }
+
+  .footer { text-align: center; font-size: 10px; color: rgba(255,255,255,0.15); margin-top: 40px; letter-spacing: 2px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <p class="brand">Bishopsgrotto</p>
+    <h1 class="title">Little Ones</h1>
+    <p class="subtitle">Personalised stories & prayers crafted just for your child</p>
+  </div>
+
+  <!-- STEP DOTS -->
+  <div class="steps">
+    <div class="step-dot active" id="dot-0"></div>
+    <div class="step-dot" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+  </div>
+
+  <!-- FORM SCREEN -->
+  <div id="form-screen">
+
+    <!-- STYLE PICKER -->
+    <div class="section">
+      <p class="section-label">Choose a Design Style</p>
+      <div class="style-grid">
+        <div class="style-card selected" data-style="soft" onclick="selectStyle(this,'soft')">
+          <div class="icon">🌸</div>
+          <div class="name">Soft</div>
+          <div class="desc">Pastels & watercolour warmth</div>
+        </div>
+        <div class="style-card" data-style="bold" onclick="selectStyle(this,'bold')">
+          <div class="icon">🎨</div>
+          <div class="name">Bold</div>
+          <div class="desc">Bright colours & cartoon energy</div>
+        </div>
+        <div class="style-card" data-style="elegant" onclick="selectStyle(this,'elegant')">
+          <div class="icon">✨</div>
+          <div class="name">Elegant</div>
+          <div class="desc">Gold accents & faith-filled grace</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PRODUCT -->
+    <div class="section">
+      <p class="section-label">What Would You Like?</p>
+      <div class="product-grid">
+        <button class="product-btn selected" data-product="story" onclick="selectProduct(this,'story')">
+          <span class="p-icon">📖</span>
+          <span class="p-name">Story</span>
+        </button>
+        <button class="product-btn" data-product="prayer" onclick="selectProduct(this,'prayer')">
+          <span class="p-icon">🙏</span>
+          <span class="p-name">Prayers</span>
+        </button>
+        <button class="product-btn" data-product="both" onclick="selectProduct(this,'both')">
+          <span class="p-icon">💛</span>
+          <span class="p-name">Both</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CHILD DETAILS -->
+    <div class="section">
+      <p class="section-label">About the Child</p>
+      <div class="form-grid">
+        <div class="two-col">
+          <div class="field">
+            <label>First Name *</label>
+            <input type="text" id="f-name" placeholder="e.g. Adaeze"/>
+          </div>
+          <div class="field">
+            <label>Age *</label>
+            <input type="number" id="f-age" placeholder="e.g. 4" min="1" max="12"/>
+          </div>
+        </div>
+        <div class="field">
+          <label>Gender</label>
+          <div class="gender-row">
+            <button class="gender-btn selected" onclick="selectGender(this,'Girl')">👧 Girl</button>
+            <button class="gender-btn" onclick="selectGender(this,'Boy')">👦 Boy</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Something Special About Them *</label>
+          <input type="text" id="f-special" placeholder="e.g. she loves to sing and make everyone laugh"/>
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label>Favourite Animal</label>
+            <input type="text" id="f-animal" placeholder="e.g. elephant"/>
+          </div>
+          <div class="field">
+            <label>Favourite Colour</label>
+            <input type="text" id="f-colour" placeholder="e.g. yellow"/>
+          </div>
+        </div>
+
+        <!-- Dedication toggle -->
+        <div>
+          <div class="dedication-toggle" onclick="toggleDedication()">
+            <div class="toggle-pill" id="ded-pill"></div>
+            <span class="toggle-label">Add a personalised dedication message</span>
+          </div>
+          <div id="ded-field" style="display:none">
+            <div class="field">
+              <label>Dedication</label>
+              <textarea id="f-dedication" rows="2" placeholder="e.g. For Adaeze, our little sunshine — with all our love, Mummy & Daddy"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg">Please fill in the child's name, age, and something special about them.</div>
+
+    <button class="btn-primary" onclick="startGenerate()">✨ Create My Little One's Book</button>
+  </div>
+
+  <!-- LOADING SCREEN -->
+  <div id="loading-screen">
+    <div class="spinner">⭐</div>
+    <p class="loading-name" id="loading-name">Writing the story…</p>
+    <p class="loading-sub">Crafting something beautiful just for <span id="loading-child"></span></p>
+  </div>
+
+  <!-- RESULT SCREEN -->
+  <div id="result-screen">
+    <div class="result-header">
+      <p class="brand" id="res-product-label">Story</p>
+      <h2 class="result-title" id="res-title">Adaeze's Adventure</h2>
+      <p class="result-meta" id="res-meta">5 pages · Personalised for Adaeze, age 4</p>
+    </div>
+
+    <div class="pages-nav" id="pages-nav"></div>
+
+    <div class="page-card" id="page-card">
+      <div class="page-header">
+        <span class="page-emoji" id="pg-emoji">🌟</span>
+        <div>
+          <p class="page-label" id="pg-label">Page 1</p>
+          <p class="page-prayer-title" id="pg-prayer-title"></p>
+        </div>
+      </div>
+      <p class="page-body" id="pg-body">Loading…</p>
+    </div>
+
+    <div class="nav-row">
+      <button class="nav-btn" id="btn-prev" onclick="changePage(-1)">← Previous</button>
+      <button class="nav-btn next" id="btn-next" onclick="changePage(1)">Next →</button>
+    </div>
+
+    <!-- If both, show section toggle -->
+    <div id="section-toggle" style="display:none; margin-bottom:20px;">
+      <div style="display:flex; gap:10px;">
+        <button id="sec-story" class="product-btn selected" onclick="switchSection('story')" style="flex:1; padding:10px;">
+          <span class="p-icon">📖</span><span class="p-name">Story</span>
+        </button>
+        <button id="sec-prayer" class="product-btn" onclick="switchSection('prayer')" style="flex:1; padding:10px;">
+          <span class="p-icon">🙏</span><span class="p-name">Prayers</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-download" onclick="downloadPDF()">⬇ Download PDF</button>
+      <button class="btn-new" onclick="resetAll()">✨ New Book</button>
+    </div>
+    <button class="btn-secondary" onclick="resetAll()">← Start Over</button>
+  </div>
+
+  <div class="footer">Bishopsgrotto · Little Ones · All rights reserved</div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+
+// State
+let state = {
+  style: 'soft',
+  product: 'story',
+  gender: 'Girl',
+  dedication: false,
+  name: '', age: '', special: '', animal: '', colour: '', dedicationText: '',
+  storyPages: [],
+  prayerPages: [],
+  currentSection: 'story',
+  currentPage: 0,
+};
+
+// Style selector
+function selectStyle(el, val) {
+  document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  state.style = val;
+}
+
+// Product selector
+function selectProduct(el, val) {
+  document.querySelectorAll('.product-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  state.product = val;
+}
+
+// Gender
+function selectGender(el, val) {
+  document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  state.gender = val;
+}
+
+// Dedication toggle
+function toggleDedication() {
+  state.dedication = !state.dedication;
+  document.getElementById('ded-pill').classList.toggle('on', state.dedication);
+  document.getElementById('ded-field').style.display = state.dedication ? 'block' : 'none';
+}
+
+// Step dots
+function setStep(n) {
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.classList.remove('active','done');
+    if (i < n) d.classList.add('done');
+    if (i === n) d.classList.add('active');
+  });
+}
+
+// Prompt builders
+function storyPrompt() {
+  const pronoun = state.gender === 'Girl' ? 'she/her' : 'he/him';
+  return `You are a warm Christian children's storywriter. Write a personalised cartoon-style bedtime story.
+Child details:
+- Name: ${state.name}
+- Age: ${state.age}
+- Gender: ${state.gender} (use ${pronoun})
+- Special trait: ${state.special}
+- Favourite animal: ${state.animal || 'a friendly lamb'}
+- Favourite colour: ${state.colour || 'golden'}
+
+RULES:
+- ${state.name} IS the hero. Use their name throughout every page.
+- Write EXACTLY 5 pages. Label each: "Page 1:", "Page 2:", "Page 3:", "Page 4:", "Page 5:"
+- Each page: 3-4 sentences. Vivid, warm, cartoon-style imagery.
+- Weave gentle faith themes — God's love, courage, being special to God.
+- Small challenge overcome with God's help. End peacefully and sleepily.
+- Words suitable for age ${state.age}.
+- First line must include ${state.name}'s name magically.
+Output ONLY the 5 pages. No preamble, no commentary.`;
+}
+
+function prayerPrompt() {
+  const pronoun = state.gender === 'Girl' ? 'she/her' : 'he/him';
+  return `You are a gentle Christian prayer writer for children. Write a personalised prayer book.
+Child details:
+- Name: ${state.name}
+- Age: ${state.age}
+- Gender: ${state.gender} (use ${pronoun} where needed)
+- Special trait: ${state.special}
+
+RULES:
+- Write EXACTLY 5 prayers. Label each: "Prayer 1: [Title]", "Prayer 2: [Title]", etc.
+- Use ${state.name}'s name IN EVERY prayer.
+- Themes: Morning prayer, Bedtime prayer, Thankfulness, Courage & school/play, Prayer for family.
+- Written AS the child speaking to God — first person ("Dear God, thank You…")
+- 4-6 lines each. Heartfelt, simple, personal. God is loving, close, kind.
+- Words suitable for age ${state.age}.
+Output ONLY the 5 prayers. No preamble, no commentary.`;
+}
+
+// Parse pages
+function parseContent(text, type) {
+  const label = type === 'story' ? 'Page' : 'Prayer';
+  const regex = new RegExp(`${label}\\s*(\\d+)[:\\s\\-–]+([\\s\\S]*?)(?=${label}\\s*\\d+[:\\s\\-–]|$)`, 'gi');
+  const pages = [];
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    let body = m[2].trim();
+    let title = null;
+    if (type === 'prayer') {
+      // extract title from first line if colon present
+      const lines = body.split('\n');
+      if (lines[0] && lines[0].length < 60 && !lines[0].includes('Dear') && !lines[0].includes('God')) {
+        title = lines[0].replace(/^[:\-–\s]+/, '').trim();
+        body = lines.slice(1).join('\n').trim();
+      }
+    }
+    pages.push({ num: `${label} ${m[1]}`, title, body });
+  }
+  return pages;
+}
+
+// AI call
+async function callAI(prompt) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  return data.content?.find(b => b.type === 'text')?.text || '';
+}
+
+// Main generate
+async function startGenerate() {
+  state.name = document.getElementById('f-name').value.trim();
+  state.age = document.getElementById('f-age').value.trim();
+  state.special = document.getElementById('f-special').value.trim();
+  state.animal = document.getElementById('f-animal').value.trim();
+  state.colour = document.getElementById('f-colour').value.trim();
+  state.dedicationText = document.getElementById('f-dedication')?.value.trim() || '';
+
+  const err = document.getElementById('error-msg');
+  if (!state.name || !state.age || !state.special) {
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+
+  document.getElementById('form-screen').style.display = 'none';
+  document.getElementById('loading-screen').style.display = 'block';
+  document.getElementById('loading-child').textContent = state.name;
+  setStep(1);
+
+  try {
+    if (state.product === 'story' || state.product === 'both') {
+      document.getElementById('loading-name').textContent = `Writing ${state.name}'s story…`;
+      const storyText = await callAI(storyPrompt());
+      state.storyPages = parseContent(storyText, 'story');
+    }
+    if (state.product === 'prayer' || state.product === 'both') {
+      document.getElementById('loading-name').textContent = `Writing ${state.name}'s prayers…`;
+      const prayerText = await callAI(prayerPrompt());
+      state.prayerPages = parseContent(prayerText, 'prayer');
+    }
+
+    state.currentSection = state.product === 'prayer' ? 'prayer' : 'story';
+    state.currentPage = 0;
+
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('result-screen').style.display = 'block';
+    setStep(2);
+    renderResult();
+  } catch(e) {
+    document.getElementById('loading-screen').style.display = 'none';
+    document.getElementById('form-screen').style.display = 'block';
+    setStep(0);
+    const err = document.getElementById('error-msg');
+    err.textContent = 'Something went wrong. Please try again.';
+    err.style.display = 'block';
+  }
+}
+
+const STORY_EMOJIS = { 1:'🌟', 2:'🗺️', 3:'⚔️', 4:'🌈', 5:'🌙' };
+const PRAYER_EMOJIS = { 1:'☀️', 2:'🌙', 3:'🙏', 4:'💪', 5:'❤️' };
+
+function currentPages() {
+  return state.currentSection === 'story' ? state.storyPages : state.prayerPages;
+}
+
+function renderResult() {
+  const pages = currentPages();
+  const pg = pages[state.currentPage];
+  if (!pg) return;
+
+  // Header
+  const isStory = state.currentSection === 'story';
+  document.getElementById('res-product-label').textContent = state.product === 'both'
+    ? (isStory ? '📖 Story' : '🙏 Prayer Book') : (isStory ? '📖 Story' : '🙏 Prayer Book');
+  document.getElementById('res-title').textContent = isStory
+    ? `${state.name}'s Big Adventure` : `${state.name}'s Prayer Book`;
+  document.getElementById('res-meta').textContent =
+    `${pages.length} ${isStory ? 'pages' : 'prayers'} · Personalised for ${state.name}, age ${state.age}`;
+
+  // Section toggle
+  document.getElementById('section-toggle').style.display = state.product === 'both' ? 'block' : 'none';
+
+  // Page dots
+  const nav = document.getElementById('pages-nav');
+  nav.innerHTML = '';
+  pages.forEach((_, i) => {
+    const d = document.createElement('button');
+    d.className = 'page-dot' + (i === state.currentPage ? ' active' : '');
+    d.onclick = () => { state.currentPage = i; renderResult(); };
+    nav.appendChild(d);
+  });
+
+  // Page content
+  const emojiMap = isStory ? STORY_EMOJIS : PRAYER_EMOJIS;
+  const pgNum = parseInt(pg.num.split(' ')[1]);
+  document.getElementById('pg-emoji').textContent = emojiMap[pgNum] || '✨';
+  document.getElementById('pg-label').textContent = pg.num;
+  document.getElementById('pg-prayer-title').textContent = pg.title || '';
+  document.getElementById('pg-body').textContent = pg.body;
+
+  // Nav buttons
+  document.getElementById('btn-prev').disabled = state.currentPage === 0;
+  document.getElementById('btn-next').disabled = state.currentPage === pages.length - 1;
+}
+
+function changePage(dir) {
+  const pages = currentPages();
+  state.currentPage = Math.max(0, Math.min(pages.length - 1, state.currentPage + dir));
+  renderResult();
+}
+
+function switchSection(sec) {
+  state.currentSection = sec;
+  state.currentPage = 0;
+  document.getElementById('sec-story').classList.toggle('selected', sec === 'story');
+  document.getElementById('sec-prayer').classList.toggle('selected', sec === 'prayer');
+  renderResult();
+}
+
+function resetAll() {
+  state = { style:'soft', product:'story', gender:'Girl', dedication:false, name:'', age:'', special:'', animal:'', colour:'', dedicationText:'', storyPages:[], prayerPages:[], currentSection:'story', currentPage:0 };
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('form-screen').style.display = 'block';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-age').value = '';
+  document.getElementById('f-special').value = '';
+  document.getElementById('f-animal').value = '';
+  document.getElementById('f-colour').value = '';
+  setStep(0);
+}
+
+// ─── PDF GENERATION ───────────────────────────────────────────────────────────
+
+const THEMES = {
+  soft: {
+    coverBg: [255,240,245], coverTitle: [180,80,120], coverSub: [150,100,130],
+    pageBg: [255,248,252], accent: [220,130,160], textColor: [80,50,70],
+    borderColor: [240,180,210], headerBg: [250,220,235],
+    font: 'times', emoji: '🌸'
+  },
+  bold: {
+    coverBg: [30,30,80], coverTitle: [255,200,50], coverSub: [200,220,255],
+    pageBg: [25,25,60], accent: [255,180,40], textColor: [230,230,255],
+    borderColor: [80,80,160], headerBg: [40,40,100],
+    font: 'helvetica', emoji: '🎨'
+  },
+  elegant: {
+    coverBg: [20,15,40], coverTitle: [212,175,55], coverSub: [200,180,240],
+    pageBg: [18,12,35], accent: [212,175,55], textColor: [220,210,240],
+    borderColor: [80,60,120], headerBg: [30,20,55],
+    font: 'times', emoji: '✨'
+  }
+};
+
+function rgbToHex(r,g,b) {
+  return '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
+}
+
+function addPDFPage(doc, theme, title, pageLabel, prayerTitle, body, pageNum, totalPages) {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const m = theme;
+
+  // Background
+  doc.setFillColor(...m.pageBg);
+  doc.rect(0, 0, W, H, 'F');
+
+  // Top accent bar
+  doc.setFillColor(...m.headerBg);
+  doc.rect(0, 0, W, 22, 'F');
+
+  // Header text
+  doc.setTextColor(...m.accent);
+  doc.setFontSize(7);
+  doc.setFont(m.font, 'italic');
+  doc.text('Bishopsgrotto · Little Ones', 14, 9);
+  doc.setFont(m.font, 'normal');
+  doc.text(title, W - 14, 9, { align: 'right' });
+
+  // Decorative border
+  doc.setDrawColor(...m.borderColor);
+  doc.setLineWidth(0.5);
+  doc.rect(10, 26, W - 20, H - 36);
+
+  // Page label
+  doc.setTextColor(...m.accent);
+  doc.setFontSize(8);
+  doc.setFont(m.font, 'bold');
+  doc.text(pageLabel.toUpperCase(), 20, 36);
+
+  // Prayer title if present
+  let bodyY = 44;
+  if (prayerTitle) {
+    doc.setTextColor(...m.textColor);
+    doc.setFontSize(13);
+    doc.setFont(m.font, 'italic');
+    doc.text(prayerTitle, 20, 43);
+    bodyY = 52;
+  }
+
+  // Divider
+  doc.setDrawColor(...m.accent);
+  doc.setLineWidth(0.3);
+  doc.line(20, bodyY - 3, W - 20, bodyY - 3);
+
+  // Body text
+  doc.setTextColor(...m.textColor);
+  doc.setFontSize(13);
+  doc.setFont(m.font, 'italic');
+  const lines = doc.splitTextToSize(body, W - 44);
+  let y = bodyY + 6;
+  lines.forEach(line => {
+    if (y > H - 30) return;
+    doc.text(line, 22, y);
+    y += 7.5;
+  });
+
+  // Page number
+  doc.setTextColor(...m.accent);
+  doc.setFontSize(8);
+  doc.setFont(m.font, 'normal');
+  doc.text(`${pageNum} / ${totalPages}`, W / 2, H - 10, { align: 'center' });
+}
+
+function downloadPDF() {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const theme = THEMES[state.style];
+
+  let pageCount = 0;
+  const storyCount = state.storyPages.length;
+  const prayerCount = state.prayerPages.length;
+  const totalContent = (state.product === 'both' ? storyCount + prayerCount : storyCount || prayerCount);
+  const total = totalContent + 1 + (state.dedication ? 1 : 0); // +1 cover, +1 dedication
+
+  // ── COVER PAGE ──
+  doc.setFillColor(...theme.coverBg);
+  doc.rect(0, 0, W, H, 'F');
+
+  // Decorative circles
+  doc.setFillColor(...theme.accent);
+  doc.circle(W - 10, 15, 25, 'F');
+  doc.setFillColor(...theme.borderColor);
+  doc.circle(10, H - 10, 18, 'F');
+
+  // Cover title
+  doc.setTextColor(...theme.coverTitle);
+  doc.setFontSize(9);
+  doc.setFont(theme.font, 'normal');
+  doc.text('B I S H O P S G R O T T O', W / 2, 35, { align: 'center' });
+
+  doc.setFontSize(32);
+  doc.setFont(theme.font, 'bold');
+  const nameLines = doc.splitTextToSize(state.name + "'s", W - 30);
+  let ny = 60;
+  nameLines.forEach(l => { doc.text(l, W / 2, ny, { align: 'center' }); ny += 14; });
+
+  doc.setFontSize(18);
+  doc.setFont(theme.font, 'italic');
+  const subtitle = state.product === 'both'
+    ? 'Stories & Prayers'
+    : state.product === 'prayer' ? 'Prayer Book' : 'Big Adventure';
+  doc.text(subtitle, W / 2, ny + 4, { align: 'center' });
+
+  // Child details
+  doc.setTextColor(...theme.coverSub);
+  doc.setFontSize(9);
+  doc.setFont(theme.font, 'normal');
+  doc.text(`A personalised book for ${state.name}, age ${state.age}`, W / 2, H - 28, { align: 'center' });
+
+  doc.setFontSize(8);
+  doc.text('Little Ones · Bishopsgrotto', W / 2, H - 20, { align: 'center' });
+
+  pageCount++;
+
+  // ── DEDICATION PAGE ──
+  if (state.dedication && state.dedicationText) {
+    doc.addPage();
+    doc.setFillColor(...theme.pageBg);
+    doc.rect(0, 0, W, H, 'F');
+    doc.setDrawColor(...theme.borderColor);
+    doc.setLineWidth(0.5);
+    doc.rect(14, 14, W - 28, H - 28);
+
+    doc.setTextColor(...theme.accent);
+    doc.setFontSize(8);
+    doc.setFont(theme.font, 'italic');
+    doc.text('— With Love —', W / 2, H / 2 - 16, { align: 'center' });
+
+    doc.setTextColor(...theme.textColor);
+    doc.setFontSize(13);
+    doc.setFont(theme.font, 'italic');
+    const dedLines = doc.splitTextToSize(state.dedicationText, W - 50);
+    let dy = H / 2;
+    dedLines.forEach(l => { doc.text(l, W / 2, dy, { align: 'center' }); dy += 8; });
+    pageCount++;
+  }
+
+  // ── STORY PAGES ──
+  if (state.storyPages.length > 0) {
+    const bookTitle = `${state.name}'s Big Adventure`;
+    state.storyPages.forEach((pg, i) => {
+      doc.addPage();
+      pageCount++;
+      addPDFPage(doc, theme, bookTitle, pg.num, null, pg.body, pageCount, total);
+    });
+  }
+
+  // ── PRAYER PAGES ──
+  if (state.prayerPages.length > 0) {
+    const bookTitle = `${state.name}'s Prayer Book`;
+    state.prayerPages.forEach((pg, i) => {
+      doc.addPage();
+      pageCount++;
+      addPDFPage(doc, theme, bookTitle, pg.num, pg.title, pg.body, pageCount, total);
+    });
+  }
+
+  // ── BACK COVER ──
+  doc.addPage();
+  doc.setFillColor(...theme.coverBg);
+  doc.rect(0, 0, W, H, 'F');
+  doc.setDrawColor(...theme.accent);
+  doc.setLineWidth(0.4);
+  doc.rect(12, 12, W - 24, H - 24);
+  doc.setTextColor(...theme.coverTitle);
+  doc.setFontSize(11);
+  doc.setFont(theme.font, 'italic');
+  doc.text(`Made with love for ${state.name}`, W / 2, H / 2 - 8, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setTextColor(...theme.coverSub);
+  doc.text('Bishopsgrotto · Little Ones', W / 2, H / 2 + 6, { align: 'center' });
+
+  const filename = `${state.name.replace(/\s+/g,'_')}_LittleOnes_Bishopsgrotto.pdf`;
+  doc.save(filename);
+}
+</script>
+</body>
+</html>
